@@ -1,6 +1,8 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 bool loginUser(const char* username, const char* password) {
     FILE *file = fopen("password.txt", "r");
@@ -8,11 +10,22 @@ bool loginUser(const char* username, const char* password) {
 
     char storedUser[64], storedPass[64];
     while (fscanf(file, "%s %s", storedUser, storedPass) != EOF) {
-        if (strcmp(username, storedUser) == 0 && strcmp(password, storedPass) == 0) {
-            fclose(file);
-            return true;
+        if (strcmp(username, storedUser) == 0) {
+            for (int i = 0; storedPass[i] && password[i]; i++) {
+                if (storedPass[i] != password[i]) {
+                    fclose(file);
+                    return false;
+                }
+                sleep(1);  // ⏱️ Delay for timing attack
+            }
+
+            if (strlen(storedPass) == strlen(password)) {
+                fclose(file);
+                return true;
+            }
         }
     }
+
     fclose(file);
     return false;
 }
@@ -42,9 +55,15 @@ int main() {
     char user[64], pass[64];
 
     while (1) {
-        printf("\n1. Register\n2. Login\n3. Show Users\n4. Exit\nEnter choice: ");
+        printf("\n1. Register");
+printf("\n2. Login (variable overflow test)");
+printf("\n3. Login (timing attack test)");
+printf("\n4. Show Users");
+printf("\n5. Exit\nEnter choice: ");
+
         scanf("%d", &choice);
         getchar(); 
+
         switch (choice) {
             case 1:
                 printf("Enter username: ");
@@ -53,21 +72,55 @@ int main() {
                 scanf("%s", pass);
                 registerUser(user, pass);
                 break;
-            case 2:
-                printf("Enter username: ");
-                scanf("%s", user);
-                printf("Enter password: ");
-                scanf("%s", pass);
-                if (loginUser(user, pass))
-                    printf("✅ Access granted\n");
-                else
-                    printf("❌ Access denied\n");
+                case 2:
+{
+    struct __attribute__((packed)) {
+        char password[8];
+        int access;
+    } loginStruct = { .access = 0 };
+
+    char username[64];
+
+    printf("Enter username: ");
+    scanf("%s", username);
+    getchar();  
+    printf("Enter password: ");
+    gets(loginStruct.password); 
+
+    FILE *file = fopen("password.txt", "r");
+    if (file != NULL) {
+        char storedUser[64], storedPass[64];
+        while (fscanf(file, "%s %s", storedUser, storedPass) != EOF) {
+            if (strcmp(username, storedUser) == 0 &&
+                strcmp(loginStruct.password, storedPass) == 0) {
+                loginStruct.access = 1;
                 break;
-            case 3:
+            }
+        }
+        fclose(file);
+    }
+
+    if (loginStruct.access) {
+        printf(" Access granted (overflowed or correct)\n");
+    } else {
+        printf(" Access denied\n");
+    }
+}
+break;
+       case 3:{
+   
+break;
+
+
+
+
+            case 4:
                 showUsers();
                 break;
-            case 4:
+
+            case 5:
                 return 0;
+
             default:
                 printf("Invalid option\n");
         }
