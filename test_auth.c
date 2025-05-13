@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 bool loginUser(const char* username, const char* password) {
     FILE *file = fopen("password.txt", "r");
@@ -16,7 +17,7 @@ bool loginUser(const char* username, const char* password) {
                     fclose(file);
                     return false;
                 }
-                sleep(1);  // ⏱️ Delay for timing attack
+                sleep(1); 
             }
 
             if (strlen(storedPass) == strlen(password)) {
@@ -33,7 +34,6 @@ bool loginUser(const char* username, const char* password) {
 void registerUser(const char* username, const char* password) {
     FILE *file = fopen("password.txt", "a");
     if (!file) return;
-
     fprintf(file, "%s %s\n", username, password);
     fclose(file);
 }
@@ -52,27 +52,33 @@ void showUsers() {
 
 int main() {
     int choice;
+    char input[16];
     char user[64], pass[64];
 
     while (1) {
         printf("\n1. Register");
-printf("\n2. Login (variable overflow test)");
-printf("\n3. Login (timing attack test)");
-printf("\n4. Show Users");
-printf("\n5. Exit\nEnter choice: ");
+        printf("\n2. Login (variable overflow test)");
+        printf("\n3. Login (timing attack test)");
+        printf("\n4. Show Users");
+        printf("\n5. Exit\nEnter choice: ");
 
-        scanf("%d", &choice);
-        getchar(); 
+        if (!fgets(input, sizeof(input), stdin)) break;
+        choice = atoi(input); 
 
         switch (choice) {
             case 1:
                 printf("Enter username: ");
-                scanf("%s", user);
+                if (!fgets(user, sizeof(user), stdin)) break;
+                user[strcspn(user, "\n")] = 0;
+
                 printf("Enter password: ");
-                scanf("%s", pass);
+                if (!fgets(pass, sizeof(pass), stdin)) break;
+                pass[strcspn(pass, "\n")] = 0;
+
                 registerUser(user, pass);
                 break;
-                case 2:
+
+                  case 2:
 {
     struct __attribute__((packed)) {
         char password[8];
@@ -101,18 +107,33 @@ printf("\n5. Exit\nEnter choice: ");
     }
 
     if (loginStruct.access) {
-        printf(" Access granted (overflowed or correct)\n");
+        printf("Access granted (overflowed or correct)!\n");
     } else {
-        printf(" Access denied\n");
+        printf("Access denied\n");
     }
 }
 break;
-       case 3:{
-   
-break;
 
+            case 3: {
+                char username[64], password[64];
 
+                printf("Enter username: ");
+                fflush(stdout);
+                if (!fgets(username, sizeof(username), stdin)) break;
+                username[strcspn(username, "\n")] = 0;
 
+                printf("Enter password: ");
+                fflush(stdout);
+                if (!fgets(password, sizeof(password), stdin)) break;
+                password[strcspn(password, "\n")] = 0;
+
+                if (loginUser(username, password)) {
+                    printf("Access granted (timing-based check)\n");
+                } else {
+                    printf("Access denied\n");
+                }
+                break;
+            }
 
             case 4:
                 showUsers();
@@ -125,4 +146,6 @@ break;
                 printf("Invalid option\n");
         }
     }
+
+    return 0;
 }
